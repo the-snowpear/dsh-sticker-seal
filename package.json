@@ -1,0 +1,24 @@
+{
+  "name": "dsh-sticker-seal",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "🥪 上面一片人设，下面一片封印，中间夹住整个 harness —— 把中转站的 system 层注入复刻成本地 prompt 段落，挂成可选 DSH 预设（sticker-seal）。",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "injection",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "license": "BSD-3-Clause",
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}
