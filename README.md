@@ -42,7 +42,7 @@ DEPLOYMENT_PERSONA_SUFFIX   10200
 ## 三、快速开始
 
 ```bash
-plugin_manager install_bundle target="C:\Users\123\Documents\Playground\dsh-sticker-seal"
+plugin_manager install_bundle target="<本仓库的绝对路径>"
 ```
 
 新会话 → 预置选择器 → **贴纸封印**（roster order 5）→ 随便说一句话，然后：
