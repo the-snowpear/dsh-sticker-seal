@@ -69,6 +69,7 @@ async function ask(fromHeading, toHeading) {
         method: 'POST',
         headers: { 'content-type': 'application/json', authorization: `Bearer ${key()}` },
         body: JSON.stringify(body),
+        signal: AbortSignal.timeout(45000),
       });
       j = await r.json();
       break;
