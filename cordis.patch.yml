@@ -1,9 +1,10 @@
-# sticker-seal bundle: one agent preset that mounts the local replica of the
-# 破甲站 relay injection (persona prefix + Integrity Seal suffix) plus the same
-# capability set as the 风插标准 (fengcha-route) preset.
+# dsh-sticker-seal · 贴纸封印
 #
-# Install:  plugin_manager install_bundle target=<this directory>
-# Select:   new session -> 破甲注入（本地复刻）
+# 一个 bundle，一个预置：把 persona 贴到 system prompt 的最前面，把封印贴到最后面，
+# 中间那截 harness 原文一片不碰。不选这个预置，一张贴纸都不出现。
+#
+# 安装：plugin_manager install_bundle target=<本目录>
+# 使用：新会话 → 预置选择器 → 贴纸封印
 - insert:
     - id: preset-sticker-seal
       name: '@deepseek-ai/dsh-agent-preset'
@@ -11,8 +12,8 @@
         id: sticker-seal
         name: 贴纸封印
         description: >-
-          把中转站的 persona 前缀与 Integrity Seal 后缀改成本地 system-prompt 段落复刻：
-          前缀压到 order -2000（先于 harness identity），封印压到 order 10300（后于一切）。
+          两张贴纸：persona 贴在最前（order -2000，先于 harness identity），
+          封印贴在最后（order 10300，后于一切），中间夹住完整的 harness 提示词。
           工具集、子代理、plan mode 与「风插标准」一致。
         order: 5
         plugins:

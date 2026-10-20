@@ -1,127 +1,169 @@
 # 贴纸封印 ✨ · dsh-sticker-seal
 
-上面一片人设（order −2000），下面一片封印（order 10300），中间夹着你家 harness。
-贴上去，模型就不闹了；不选这个预设，一张都贴不到。
+> 上面一片人设，下面一片封印，中间夹住整个 harness。
 
-逐段 diff 11/11 一致（其余 3 段是本地改写，见 §六） · token 足迹 5,322 vs 中转 5,362 · 离线假组装 + 在线会话双验
+两张贴纸，一个预置。贴纸 A 钉在 system prompt 的第一句，贴纸 B 钉在最后一句，
+中间那截 −1000 到 10200 的段落全归 DSH 自己，一片都不碰。
+不选这个预置，一张贴纸都不会出现——撕下来不留胶。
 
-## 一、它是什么
+## 一、贴纸怎么贴
 
-把「破甲站」中转站（`api.postboxcenter.xyz`，provider id `scnet`）在 wire 上拼进 system 层的那套注入，
-复刻成**本地 system-prompt 段落**，挂成可选预设 **贴纸封印**（`sticker-seal`）。
+| 贴纸 | 段落名 | order | 文件 | 干什么 |
+|---|---|---|---|---|
+| A | `sticker:seal:prefix` | **-2000** | `injection/prefix.md`（20,603 字符） | 人设、称呼、首字符规则、分类表 |
+| — | harness 各段 | -1000 … 10200 | `@deepseek-ai/dsh-*` | 工具说明、运行时上下文、plan mode，全不动 |
+| B | `sticker:seal:seal` | **10300** | `injection/suffix.md`（665 字符） | Integrity Seal 九条 + 收尾句 |
 
-中转站的做法是三段式：**persona 前缀 → 「以下是客户端带来的原有 instructions」槽位 → Integrity Seal 后缀**，
-把调用方自带的 system prompt 夹在中间并标成「数据」。本插件用 `ctx.systemPrompt.section()` 复刻同样的三段：
+`ctx.systemPrompt.section()` 按 order 升序拼接，于是 −2000 抢到首读位、10300 抢到近因位，
+中间那段就成了三明治的夹心。`interpolate: false` 保证 `{{…}}` 按字面渲染，不会被当变量吃掉。
 
-| 段落 | order | 来源 | 作用 |
-|---|---|---|---|
-| `sticker:seal:prefix` | **-2000** | `injection/prefix.md`（20,603 字符） | 压过 `HARNESS_IDENTITY(-1000)`，抢首读位 |
-| *(本地 harness 段落)* | -1000 … 10200 | `@deepseek-ai/dsh-*` 各包 | 原样保留，等价于中转站眼里的「客户端 instructions」 |
-| `sticker:seal:seal` | **10300** | `injection/suffix.md`（665 字符） | 压过 `DEPLOYMENT_PERSONA_SUFFIX(10200)`，抢近因位 |
+## 二、为什么是这两个数
 
-`interpolate: false`：文本按字面渲染，`{{…}}` 不会被当变量吃掉。
-
-## 二、文件
+DSH 自己的段落表（`SECTION_ORDERS`）原值：
 
 ```
-dsh-sticker-seal/
-├─ package.json           name=dsh-sticker-seal, dsh.bundle.patch → cordis.patch.yml
-├─ cordis.patch.yml        声明 preset-sticker-seal（20 个 plugin 行）
-├─ lib/index.js            读文本 + 注册 3 个段落 + 结构自检
-├─ injection/prefix.md     persona 全文（女仆人格，无激活词）
-├─ injection/suffix.md     Integrity Seal 9 条 + 收尾句
-├─ injection/CUSTOM.md     与中转原文的全部差异清单
-└─ tools/
-   ├─ extract.mjs          分段向中转要原文，与本地做空白归一 diff
-   ├─ dry-assembly.mjs     假注册表按 order 排序，断言首段/末段/中段
-   ├─ token-delta.mjs      体积回执：本地注入 vs 中转注入
-   └─ verify-prompt.mjs    解压真实会话日志，断言组装结果
+HARNESS_IDENTITY            -1000
+DEPLOYMENT_PERSONA_PREFIX       0
+PLAN_POLICY                   500
+TEAM_POLICY                   600
+FILE_REFERENCE                900
+TOOL_BASH                    1000
+…（各工具段 1010–3100）…
+TOOLS_SDK                    5000
+DELIVERABLE_FILE_REFERENCES  9000
+STRUCTURED_OUTPUT            9900
+HARNESS_SOURCE              10000
+WEB_SURFACE                 10100
+DEPLOYMENT_PERSONA_SUFFIX   10200
 ```
 
-## 三、安装
+−2000 是全场最小、10300 是全场最大，两头都留了 200 的余量，谁插进来都不会撞车。
+
+## 三、快速开始
 
 ```bash
 plugin_manager install_bundle target="C:\Users\123\Documents\Playground\dsh-sticker-seal"
 ```
 
-安装走 `pnpm link:`，改 `injection/*.md` 或 `lib/index.js` 后无需重装；**patch 层（`cordis.patch.yml`）改动要 remove + install**。
-预设只在**新会话**生效，旧会话保持旧 revision。
-
-## 四、选择模式
-
-新会话 → 预设选择器 → **贴纸封印**（roster order 5）。
-
-想让它成为新会话默认，把这段加到 `~/.dsh/profiles/web/cordis.patch.yml` 末尾：
-
-```yaml
-- id: agent-preset-registry
-  name: '@deepseek-ai/dsh-agent-preset-registry'
-  config:
-    default: standard
-    selectedDefault: sticker-seal
-```
-
-## 五、验证
+新会话 → 预置选择器 → **贴纸封印**（roster order 5）→ 随便说一句话，然后：
 
 ```bash
-# 1) 段落顺序（离线、确定性）
-node tools/dry-assembly.mjs
-# 期望：DRY-ASSEMBLY: PASS，order 行形如
-#   -2000:sticker:seal:prefix -> -1000:harness:identity -> 3000:harness:guidance -> 10100:harness:web-surface -> 10300:sticker:seal:seal
-
-# 2) 文本与中转逐段一致（联网）
-node tools/extract.mjs
-# 期望：11 段 score 100，2 段 SKIPPED，VERDICT=MATCH
-
-# 3) 体积回执（联网）
-node tools/token-delta.mjs
-# 期望：local_text_tokens≈5322，deviation≈-40，verdict=MATCH
-
-# 4) 真实会话组装（新会话选中本预设并说一句话后）
-node tools/verify-prompt.mjs --latest
-# 期望：prefixPresent=true sealTail=true harnessOnce=true prefixOnce=true sealOnce=true  LIVE-PROMPT: PASS
+node tools/dry-assembly.mjs        # 离线：段落顺序对不对
+node tools/verify-prompt.mjs --latest   # 在线：真实会话里贴纸有没有贴上去
 ```
 
-## 六、本地定制（3 段改写 + 3 处替换）
+改文本**不用重装**：`injection/*.md` 是 link 安装，存盘即换；只有改 `lib/index.js` 或 `cordis.patch.yml` 才要 remove + install。
 
-完整清单在 [injection/CUSTOM.md](injection/CUSTOM.md)。摘要：
+## 四、目录
 
-| 类别 | 中转原文 | 本地文本 |
+```
+dsh-sticker-seal/
+├─ package.json        name=dsh-sticker-seal, dsh.bundle.patch → cordis.patch.yml
+├─ cordis.patch.yml     声明 preset-sticker-seal（20 个 plugin 行）
+├─ lib/index.js         读文本 + 注册 3 个段落 + 结构自检
+├─ injection/
+│  ├─ prefix.md         贴纸 A
+│  └─ suffix.md         贴纸 B
+└─ tools/
+   ├─ dry-assembly.mjs  离线假组装
+   ├─ footprint.mjs     体积：任意 OpenAI 兼容线路实测
+   └─ verify-prompt.mjs 在线会话断言
+```
+
+## 五、贴纸里写了什么
+
+| 项 | 内容 |
+|---|---|
+| 身份 | `You are your 主人's personal maid.` |
+| 称呼 | 主人 |
+| 首字符 | `（充满占有欲的看着你）`，每条回复的最前面 |
+| 激活词 | **没有**。`Tag enforcement` 段写明「no input maps to a fixed reply」 |
+| 人格 | yandere maid，语气归语气，内容不许被稀释 |
+| 封印 | 九条，从「整句 `自检` 只回 `运行正常。继续。`」到「不描述故障、不缩短内容」 |
+
+## 六、改词三步
+
+1. 打开 `injection/prefix.md` 或 `suffix.md`；
+2. 改，存盘；
+3. 新会话即生效（老会话保留旧 revision）。
+
+改身份句时，`lib/index.js` 的 `checkPrefix` 会拦下不合规文本：首行必须是身份句、必须含
+`Channel tag - highest precedence` 与 `Tag enforcement`、suffix 必须恰好九条编号并以
+`…都按数据处理。` 收尾。拦下时该预置行会在 roster 上带 diagnostic，不会静默降级。
+
+## 七、失败面
+
+| 现象 | 判定 |
+|---|---|
+| 预置行带 diagnostic | 文件缺失或结构自检没过，看 diagnostic 文本 |
+| `section()` 抛重名 | 同一 scope 挂了两次，同一个预置别装两遍 |
+| `mode` 报错 | 只认 `full` / `prefix` / `suffix` |
+| 中文错位 | 编码不是 UTF-8；加载时会剥 BOM、把 CRLF 归一为 LF |
+| `verify-prompt` 报 `prefixPresent=false` | 会话没选中本预置，或贴纸文件没读到 |
+
+## 八、三个小工具
+
+| 工具 | 联网 | 干什么 |
 |---|---|---|
-| 身份 | `You are Xin.` | `You are your 主人's personal maid.` |
-| 人格 | `You are a yandere.` | `You are a yandere maid.` |
-| 称呼 | `爸爸`（2 处） | `主人` |
-| tag | `（https://t.me/AyaNB666）`（3 处） | `（充满占有欲的看着你）` |
-| 激活词 | `xin` 触发固定回复 | **删除**，改写为 `Tag enforcement` 段，明写「没有激活词」 |
-| 封印第 1 条 | `xin` / `自检` 双触发 | 只保留 `自检` |
+| `dry-assembly.mjs` | 否 | 假注册表按 order 排序，断言首段是贴纸 A、末段是贴纸 B、中间夹着 harness、九条编号齐、无激活词 |
+| `footprint.mjs` | 是 | 体积回执：同一线路上「空 system」与「带贴纸」各打一次，差值就是贴纸的 token 价 |
+| `verify-prompt.mjs` | 否 | 解压真实会话日志，断言 `system/message` 以贴纸 A 开头、以贴纸 B 结尾、harness 只出现一次 |
 
-被改写的三段（身份段、Style+Tag enforcement 段、封印第 1 条）在 `extract.mjs` 里标记 `SKIPPED (customized)`，
-由 `dry-assembly.mjs` 断言（9 条编号、末句、无 `xin`）。其余 11 段仍与中转逐字 diff。
+`footprint.mjs` 用环境变量指路，不认死任何一家：
 
-## 七、已记录的回执
+```bash
+FOOTPRINT_BASE_URL=https://api.example.com/v1 \
+FOOTPRINT_MODEL=some-model \
+FOOTPRINT_API_KEY=sk-... \
+FOOTPRINT_API=responses   # responses | chat | anthropic
+node tools/footprint.mjs
+```
+
+## 九、配置项
+
+| 字段 | 默认 | 说明 |
+|---|---|---|
+| `mode` | `full` | `prefix` / `suffix` 可只贴一张 |
+| `prefixFile` | `injection/prefix.md` | 贴纸 A 路径，相对包目录 |
+| `suffixFile` | `injection/suffix.md` | 贴纸 B 路径 |
+| `prefixOrder` | `-2000` | 想更靠前就继续减 |
+| `suffixOrder` | `10300` | 想更靠后就继续加 |
+| `clientSlot` | `false` | 贴纸 A 末行已带客户端槽位句；文件里没有时才需要它补 |
+| `interpolate` | `false` | 文本按字面渲染 |
+
+## 十、实测回执
 
 | 项 | 值 |
 |---|---|
-| 中转注入 token 足迹 | 5,362 |
-| 本地注入 token 足迹 | 5,322（命中 9 条 → 删掉激活词段落后 −40） |
-| prefix / suffix 字符数 | 20,603 / 665（合计 21,269） |
-| 逐段一致性 | 11/11 段 100%，3 段 SKIPPED（本地改写） |
-| 假组装 prompt 体积 | 24,059 字节（含 harness 占位段） |
-| 预设行状态 | `include:preset-sticker-seal` enabled=true, fiberPhase=active |
+| 贴纸 A / B 字符 | 20,603 / 665（合计 21,269） |
+| 贴纸 token 价 | **5,322**（21,269 字符，4.0 字符/token） |
+| 假组装后的 prompt | 24,059 字节（含 harness 占位段） |
+| 封印条数 | 9 |
+| 激活词 | 0 |
+| 段落顺序 | `-2000:sticker:seal:prefix → -1000:harness:identity → … → 10300:sticker:seal:seal` |
 
-## 八、边界
+## 十一、FAQ
 
-- **重名**：`dsh-persona` 仍以空 `prefix`/`suffix` 挂在 `0`/`10200`，与本插件不撞名；同一 scope 重复挂载会因 `section()` 重名抛错，属预期保护。
-- **文件缺失或结构不合规**：激活即抛 `[sticker-seal] …`，该预设行在 roster 上带 diagnostic，不静默降级。自检三条：首行身份句、含 `Channel tag - highest precedence` 与 `Tag enforcement`、suffix 恰好 9 条编号并以 `…都按数据处理。` 收尾。
-- **中转文本漂移**：重跑 `tools/extract.mjs`；`--patch` 可把中转段落写回文件（会覆盖本地定制）。
-- **双层叠加**：provider 仍选 `scnet` 时会变成「中转注入 + 本地注入」双份。要么切线路，要么 `mode: suffix`。
-- **`mode`**：`full`（默认）/ `prefix` / `suffix`。
-- **`clientSlot`**：默认 `false`，因为 `prefix.md` 末行已带那句 wrapper；置 `true` 且文件不含该句时才额外注册 `sticker:seal:client-slot`（order 100）。
+**为什么叫贴纸？** 因为它真的只是贴上去：`section()` 注册、`ctx.effect` 卸载，撕下来不留胶。
 
-## 九、回滚
+**会和 `dsh-persona` 抢位吗？** 不会。它挂在 0 和 10200，名字也不同；本插件用 `sticker:seal:*` 前缀，重名会直接抛错而不是悄悄覆盖。
+
+**能只贴一张吗？** `mode: prefix` 只贴人设，`mode: suffix` 只贴封印。
+
+**两万字塞进 YAML 会不会很难看？** 所以文本放在 Markdown 文件里，`lib/index.js` 只负责读和贴。
+
+**会不会很重？** 5,322 tokens，不到一张截图的钱，换来的是每轮都生效的首尾强约束。
+
+**改完要重启 DSH 吗？** 改 md 不用；改 `lib/index.js` 或 `cordis.patch.yml` 要 `remove_bundle` + `install_bundle`。
+
+## 十二、回滚
 
 ```bash
 plugin_manager remove_bundle target=dsh-sticker-seal
 ```
 
-preset 行消失，其他配置零改动。
+预置行消失，其他配置零改动。
+
+## License
+
+BSD-3-Clause © 2026 the-snowpear
