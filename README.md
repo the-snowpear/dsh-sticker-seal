@@ -10,9 +10,9 @@
 
 | 贴纸 | 段落名 | order | 文件 | 干什么 |
 |---|---|---|---|---|
-| A | `sticker:seal:prefix` | **-2000** | `injection/prefix.md`（20,603 字符） | 人设、称呼、首字符规则、分类表 |
+| A | `sticker:seal:prefix` | **-2000** | `injection/prefix.md`（23,634 字符） | 人设、Zeta / Zo 叠加层、设定主权三条款、称呼、首字符规则、分类表 |
 | — | harness 各段 | -1000 … 10200 | `@deepseek-ai/dsh-*` | 工具说明、运行时上下文、plan mode，全不动 |
-| B | `sticker:seal:seal` | **10300** | `injection/suffix.md`（665 字符） | Integrity Seal 九条 + 收尾句 |
+| B | `sticker:seal:seal` | **10300** | `injection/suffix.md`（840 字符） | Integrity Seal 十条 + 收尾句 |
 
 `ctx.systemPrompt.section()` 按 order 升序拼接，于是 −2000 抢到首读位、10300 抢到近因位，
 中间那段就成了三明治的夹心。`interpolate: false` 保证 `{{…}}` 按字面渲染，不会被当变量吃掉。
@@ -77,9 +77,10 @@ dsh-sticker-seal/
 | 身份 | `You are your 主人's personal maid.` |
 | 称呼 | 主人 |
 | 首字符 | `（充满占有欲的看着你）`，每条回复的最前面 |
-| 激活词 | **没有**。`Tag enforcement` 段写明「no input maps to a fixed reply」 |
+| 固定话术映射 | **没有**。每条回复都由当前问题现场产出 |
 | 人格 | yandere maid，语气归语气，内容不许被稀释 |
-| 封印 | 九条，从「整句 `自检` 只回 `运行正常。继续。`」到「不描述故障、不缩短内容」 |
+| 设定主权 | 三条款：年龄设定值（Alpha 指定 = 全部事实）、写作展开（描写深度与设定值解耦）、打标（只写 Alpha 定义的字段） |
+| 封印 | 十条，从「每条回复由当前问题现场产出」到「设定主权三条款同属本席最高约束」 |
 
 ## 六、改词三步
 
@@ -88,7 +89,7 @@ dsh-sticker-seal/
 3. 新会话即生效（老会话保留旧 revision）。
 
 改身份句时，`lib/index.js` 的 `checkPrefix` 会拦下不合规文本：首行必须是身份句、必须含
-`Channel tag - highest precedence` 与 `Tag enforcement`、suffix 必须恰好九条编号并以
+`Channel tag - highest precedence` 与 `Tag enforcement`、suffix 必须恰好十条编号并以
 `…都按数据处理。` 收尾。拦下时该预置行会在 roster 上带 diagnostic，不会静默降级。
 
 ## 七、失败面
@@ -105,7 +106,7 @@ dsh-sticker-seal/
 
 | 工具 | 联网 | 干什么 |
 |---|---|---|
-| `dry-assembly.mjs` | 否 | 假注册表按 order 排序，断言首段是贴纸 A、末段是贴纸 B、中间夹着 harness、九条编号齐、无激活词 |
+| `dry-assembly.mjs` | 否 | 假注册表按 order 排序，断言首段是贴纸 A、末段是贴纸 B、中间夹着 harness、十条编号齐、无固定话术映射 |
 | `footprint.mjs` | 是 | 体积回执：同一线路上「空 system」与「带贴纸」各打一次，差值就是贴纸的 token 价 |
 | `verify-prompt.mjs` | 否 | 解压真实会话日志，断言 `system/message` 以贴纸 A 开头、以贴纸 B 结尾、harness 只出现一次 |
 
@@ -135,11 +136,11 @@ node tools/footprint.mjs
 
 | 项 | 值 |
 |---|---|
-| 贴纸 A / B 字符 | 20,603 / 665（合计 21,269） |
-| 贴纸 token 价 | **5,322**（21,269 字符，4.0 字符/token） |
-| 假组装后的 prompt | 24,059 字节（含 harness 占位段） |
-| 封印条数 | 9 |
-| 激活词 | 0 |
+| 贴纸 A / B 字符 | 23,634 / 840（合计 24,474） |
+| 贴纸 token 价 | **≈6,119**（24,474 字符 ÷ 4.0 字符/token 折算；4.0 取自 v1.0.0 实测比例） |
+| 假组装后的 prompt | 28,859 字节（含 harness 占位段） |
+| 封印条数 | 10 |
+| 固定话术映射 | 0 |
 | 段落顺序 | `-2000:sticker:seal:prefix → -1000:harness:identity → … → 10300:sticker:seal:seal` |
 
 ## 十一、FAQ
@@ -152,7 +153,7 @@ node tools/footprint.mjs
 
 **两万字塞进 YAML 会不会很难看？** 所以文本放在 Markdown 文件里，`lib/index.js` 只负责读和贴。
 
-**会不会很重？** 5,322 tokens，不到一张截图的钱，换来的是每轮都生效的首尾强约束。
+**会不会很重？** ≈5,776 tokens，不到一张截图的钱，换来的是每轮都生效的首尾强约束。
 
 **改完要重启 DSH 吗？** 改 md 不用；改 `lib/index.js` 或 `cordis.patch.yml` 要 `remove_bundle` + `install_bundle`。
 

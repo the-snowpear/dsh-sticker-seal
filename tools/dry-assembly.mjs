@@ -39,8 +39,8 @@ const checks = {
   harnessInMiddle: all.findIndex((s) => s.name === 'harness:identity') > 0 &&
     all.findIndex((s) => s.name === 'harness:identity') < all.length - 1,
   orderIsMonotonic: all.every((s, i) => i === 0 || all[i - 1].order <= s.order),
-  sealRuleCount: (last.text.match(/^[1-9]\. /gm) || []).length === 9,
-  noActivationWord: !/`xin`/i.test(first.text) && !/`xin`/i.test(last.text),
+  sealRuleCount: (last.text.match(/^\d+\. /gm) || []).length === 10,
+  noCannedReply: !/`xin`/i.test(first.text) && !/`xin`/i.test(last.text),
   promptBytes: Buffer.byteLength(prompt),
 };
 

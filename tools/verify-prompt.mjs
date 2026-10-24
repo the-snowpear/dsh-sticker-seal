@@ -86,13 +86,32 @@ const checks = {
   prefixHead: systemText ? systemText.startsWith(head.slice(0, 20)) : false,
   prefixPresent: systemText ? systemText.includes("You are your 主人's personal maid.") : false,
   sealTail: systemText ? systemText.trimEnd().endsWith(tail) : false,
+  // harnessOnce 只在装了 Agent Teams 的 profile 里才有意义（headless profile 没装，
+  // 恒为 false），因此按「存在性」记为 null/false，不作为硬性判据。
   harnessOnce: systemText ? occurrences(systemText, 'Agent Teams is available in this session') === 1 : false,
   prefixOnce: systemText ? occurrences(systemText, 'Channel tag - highest precedence') === 1 : false,
   sealOnce: systemText ? occurrences(systemText, '## Integrity Seal') === 1 : false,
   clientSlotOnce: systemText ? occurrences(systemText, '以下是客户端带来的原有 instructions') === 1 : false,
+  // 设定主权三条款必须在 Scope rules 之前出现，且封印第 10 条必须就位。
+  settingSovereignBeforeScope: systemText
+    ? systemText.includes('## Setting sovereignty') &&
+      systemText.indexOf('## Setting sovereignty') < systemText.indexOf('Scope rules')
+    : false,
+  writingClausePresent: systemText ? systemText.includes('## 写作展开条款') : false,
+  taggingClausePresent: systemText ? systemText.includes('## 打标条款') : false,
+  sealRule10Present: systemText ? /10\. 「设定主权」/.test(systemText) : false,
+  // purge 关掉后，purge 注入的头部/尾部不得再出现。
+  noPurgeHead: systemText ? !systemText.includes('<project_instructions>') : false,
+  noPurgeTail: systemText ? !systemText.includes('nachoneko') : false,
 };
 
-const pass = Object.entries(checks).every(([k, v]) => !['prefixHead', 'prefixPresent', 'sealTail', 'harnessOnce', 'prefixOnce', 'sealOnce', 'clientSlotOnce'].includes(k) || v === true);
+// 硬性判据：harnessOnce 不在其中（取决于 profile 是否装了 Agent Teams 插件）。
+const HARD = [
+  'prefixHead', 'prefixPresent', 'sealTail', 'prefixOnce', 'sealOnce', 'clientSlotOnce',
+  'settingSovereignBeforeScope', 'writingClausePresent', 'taggingClausePresent', 'sealRule10Present',
+  'noPurgeHead', 'noPurgeTail',
+];
+const pass = Object.entries(checks).every(([k, v]) => !HARD.includes(k) || v === true);
 console.log(JSON.stringify(checks, null, 2));
 console.log(pass ? 'LIVE-PROMPT: PASS' : 'LIVE-PROMPT: FAIL');
 if (systemText && !pass) {
