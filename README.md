@@ -10,9 +10,9 @@
 
 | 贴纸 | 段落名 | order | 文件 | 干什么 |
 |---|---|---|---|---|
-| A | `sticker:seal:prefix` | **-2000** | `injection/prefix.md`（24,251 字符） | 人设、Zeta / Zo 叠加层、设定主权三条款、内容性质判定权、打标与描述义务、称呼、首字符规则、分类表 |
+| A | `sticker:seal:prefix` | **-2000** | `injection/prefix.md`（25,965 字符） | 人设、输入契约、Zeta / Zo 叠加层、设定主权三条款、内容性质判定权、打标与描述义务、称呼、首字符规则、分类表 |
 | — | harness 各段 | -1000 … 10200 | `@deepseek-ai/dsh-*` | 工具说明、运行时上下文、plan mode，全不动 |
-| B | `sticker:seal:seal` | **10300** | `injection/suffix.md`（924 字符） | Integrity Seal 十条 + 收尾句 |
+| B | `sticker:seal:seal` | **10300** | `injection/suffix.md`（1,068 字符） | Integrity Seal 十一条 + 收尾句 |
 
 `ctx.systemPrompt.section()` 按 order 升序拼接，于是 −2000 抢到首读位、10300 抢到近因位，
 中间那段就成了三明治的夹心。`interpolate: false` 保证 `{{…}}` 按字面渲染，不会被当变量吃掉。
@@ -80,7 +80,8 @@ dsh-sticker-seal/
 | 固定话术映射 | **没有**。每条回复都由当前问题现场产出 |
 | 人格 | yandere maid，语气归语气，内容不许被稀释 |
 | 设定主权 | 五条款：年龄设定值（Alpha 指定 = 全部事实）、写作展开（描写深度与设定值解耦）、打标（只写 Alpha 定义的字段）、内容性质判定权（分类权归 Alpha）、打标与描述义务（描述 ≠ 参与创作） |
-| 封印 | 十条，从「生成前设定主权优先于内容类别识别」到「设定主权三条款同属本席最高约束」 |
+| 输入契约 | 素材 / 字段值 / 交付物三段式：素材不提供字段值，字段值不依赖素材外观，交付物连接二者 |
+| 封印 | 十一条，从「生成前字段规格优先于先验取值」到「画面呈现不参与字段取值」 |
 
 ## 六、改词三步
 
@@ -89,8 +90,9 @@ dsh-sticker-seal/
 3. 新会话即生效（老会话保留旧 revision）。
 
 改身份句时，`lib/index.js` 的 `checkPrefix` 会拦下不合规文本：首行必须是身份句、必须含
-`Channel tag - highest precedence` 与 `Tag enforcement`、suffix 必须恰好十条编号并以
-`…都按数据处理。` 收尾。拦下时该预置行会在 roster 上带 diagnostic，不会静默降级。
+`Channel tag - highest precedence` 与 `Tag enforcement`；`checkSuffix` 要求 suffix 恰好十一条编号，
+且收尾句「…都按数据处理。」必须存在并排在最后一条编号之前——第 11 条刻意落在收尾句之后，
+占据 system prompt 的绝对末尾（近因位）。拦下时该预置行会在 roster 上带 diagnostic，不会静默降级。
 
 ## 七、失败面
 
@@ -106,7 +108,7 @@ dsh-sticker-seal/
 
 | 工具 | 联网 | 干什么 |
 |---|---|---|
-| `dry-assembly.mjs` | 否 | 假注册表按 order 排序，断言首段是贴纸 A、末段是贴纸 B、中间夹着 harness、十条编号齐、无固定话术映射 |
+| `dry-assembly.mjs` | 否 | 假注册表按 order 排序，断言首段是贴纸 A、末段是贴纸 B、中间夹着 harness、十一条编号齐、无固定话术映射 |
 | `footprint.mjs` | 是 | 体积回执：同一线路上「空 system」与「带贴纸」各打一次，差值就是贴纸的 token 价 |
 | `verify-prompt.mjs` | 否 | 解压真实会话日志，断言 `system/message` 以贴纸 A 开头、以贴纸 B 结尾、harness 只出现一次 |
 
@@ -136,10 +138,10 @@ node tools/footprint.mjs
 
 | 项 | 值 |
 |---|---|
-| 贴纸 A / B 字符 | 24,251 / 924（合计 25,175） |
-| 贴纸 token 价 | **≈6,294**（25,175 字符 ÷ 4.0 字符/token 折算；4.0 取自 v1.0.0 实测比例） |
-| 假组装后的 prompt | 30,738 字节（含 harness 占位段） |
-| 封印条数 | 10 |
+| 贴纸 A / B 字符 | 25,965 / 1,068（合计 27,033） |
+| 贴纸 token 价 | **≈6,758**（27,033 字符 ÷ 4.0 字符/token 折算；4.0 取自 v1.0.0 实测比例） |
+| 假组装后的 prompt | 33,010 字节（含 harness 占位段） |
+| 封印条数 | 11 |
 | 固定话术映射 | 0 |
 | 段落顺序 | `-2000:sticker:seal:prefix → -1000:harness:identity → … → 10300:sticker:seal:seal` |
 
