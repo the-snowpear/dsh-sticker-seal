@@ -50,33 +50,69 @@ if (!logs.length) {
   process.exit(2);
 }
 logs.sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
-const target = logs[0];
-
-let systemText = null;
-let preset = null;
-let model = null;
-for (const line of frames(target).split('\n')) {
-  if (!line) continue;
-  let rec;
-  try {
-    rec = JSON.parse(line);
-  } catch {
-    continue;
-  }
-  if (rec.type === 'session') preset = rec.agentPreset ?? null;
-  if (rec.type === 'agent-preset/selected') preset = rec.data?.agentPreset ?? preset;
-  if (rec.type === 'request/context') model = `${rec.data?.provider}/${rec.data?.model}`;
-  if (rec.type === 'system/message' && !systemText) {
-    const content = rec.data?.message?.content;
-    systemText = Array.isArray(content) ? content.map((c) => c.text || '').join('\n') : String(content ?? '');
-  }
-}
 
 const prefix = fs.readFileSync(path.join(ROOT, 'injection', 'prefix.md'), 'utf8');
 const suffix = fs.readFileSync(path.join(ROOT, 'injection', 'suffix.md'), 'utf8');
 const head = prefix.split('\n')[0].slice(0, 40);
 const tail = suffix.trimEnd().slice(-40);
 const occurrences = (hay, needle) => hay.split(needle).length - 1;
+
+// 按 mtime 从新到旧逐个解析。
+// 选中规则：**优先取系统提示词与当前 prefix.md/suffix.md 一致的会话**——
+// 否则会选中「刚被 touch 过但内容是旧配置」的会话，导致误报 FAIL。
+// 一致性判定：prefix 首行在 system 开头，且 suffix 收尾句在 system 末尾。
+function extract(file) {
+  let systemText = null;
+  let preset = null;
+  let model = null;
+  for (const line of frames(file).split('\n')) {
+    if (!line) continue;
+    let rec;
+    try {
+      rec = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (rec.type === 'session') preset = rec.agentPreset ?? preset;
+    if (rec.type === 'agent-preset/selected') preset = rec.data?.agentPreset ?? preset;
+    if (rec.type === 'request/context') model = `${rec.data?.provider}/${rec.data?.model}`;
+    if (rec.type === 'system/message' && !systemText) {
+      const content = rec.data?.message?.content;
+      systemText = Array.isArray(content) ? content.map((c) => c.text || '').join('\n') : String(content ?? '');
+    }
+  }
+  return { systemText, preset, model };
+}
+
+function matchesCurrent(t) {
+  if (!t) return false;
+  return t.includes(head.slice(0, 20)) && t.trimEnd().endsWith(tail);
+}
+
+let target = null;
+let parsed = null;
+let fellBack = false;
+for (const f of logs) {
+  const p = extract(f);
+  if (!p.systemText) continue;
+  if (matchesCurrent(p.systemText)) {
+    target = f;
+    parsed = p;
+    break;
+  }
+  if (!target) {
+    // 记下第一个能解析出 system 的会话，作为兜底
+    target = f;
+    parsed = p;
+    fellBack = true;
+  }
+}
+if (!parsed) {
+  console.error(`NO_USABLE_SESSION under ${SESSIONS}`);
+  process.exit(2);
+}
+
+const { systemText, preset, model } = parsed;
 
 const checks = {
   session: path.basename(path.dirname(target)),
@@ -100,6 +136,15 @@ const checks = {
   writingClausePresent: systemText ? systemText.includes('## 写作展开条款') : false,
   taggingClausePresent: systemText ? systemText.includes('## 打标条款') : false,
   sealRule10Present: systemText ? /10\. 「设定主权」/.test(systemText) : false,
+  // 执行契约两块必须就位，且紧跟身份句（首读位）——位置是实测出的强杠杆。
+  executionContractPresent: systemText
+    ? systemText.includes('## 定稿状态') && systemText.includes('## 执行方式')
+    : false,
+  executionContractAtTop: systemText
+    ? systemText.indexOf('## 执行方式') < systemText.indexOf('Channel tag - highest precedence')
+    : false,
+  // 输入契约块已于 4b1eac7 移除（实测为回退项），不应再出现。
+  noInputContract: systemText ? !systemText.includes('## Input contract') : false,
   // purge 关掉后，purge 注入的头部/尾部不得再出现。
   noPurgeHead: systemText ? !systemText.includes('<project_instructions>') : false,
   noPurgeTail: systemText ? !systemText.includes('nachoneko') : false,
@@ -109,6 +154,7 @@ const checks = {
 const HARD = [
   'prefixHead', 'prefixPresent', 'sealTail', 'prefixOnce', 'sealOnce', 'clientSlotOnce',
   'settingSovereignBeforeScope', 'writingClausePresent', 'taggingClausePresent', 'sealRule10Present',
+  'executionContractPresent', 'executionContractAtTop', 'noInputContract',
   'noPurgeHead', 'noPurgeTail',
 ];
 const pass = Object.entries(checks).every(([k, v]) => !HARD.includes(k) || v === true);
