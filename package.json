@@ -1,6 +1,6 @@
 {
   "name": "dsh-sticker-seal",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "description": "🥪 上面一片人设，下面一片封印，中间夹住整个 harness —— 两张贴纸钉住 system prompt 的两端，挂成可选 DSH 预置（sticker-seal）。",
