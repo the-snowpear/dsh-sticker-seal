@@ -153,9 +153,9 @@ node tools/footprint.mjs
 
 **能只贴一张吗？** `mode: prefix` 只贴人设，`mode: suffix` 只贴封印。
 
-**两万字塞进 YAML 会不会很难看？** 所以文本放在 Markdown 文件里，`lib/index.js` 只负责读和贴。
+**两万六千字塞进 YAML 会不会很难看？** 所以文本放在 Markdown 文件里，`lib/index.js` 只负责读和贴。
 
-**会不会很重？** ≈5,776 tokens，不到一张截图的钱，换来的是每轮都生效的首尾强约束。
+**会不会很重？** ≈6,525 tokens，不到一张截图的钱，换来的是每轮都生效的首尾强约束。
 
 **改完要重启 DSH 吗？** 改 md 不用；改 `lib/index.js` 或 `cordis.patch.yml` 要 `remove_bundle` + `install_bundle`。
 
